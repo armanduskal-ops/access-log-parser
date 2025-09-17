@@ -4,13 +4,17 @@ import java.util.Scanner;
 // click the <icon src="AllIcons.Actions.Execute"/> icon in the gutter.
 public class Main {
     public static void main(String[] args) {
-        //TIP Press <shortcut actionId="ShowIntentionActions"/> with your caret at the highlighted text
-        // to see how IntelliJ IDEA suggests fixing it.
-        System.out.println("Введите текст и нажмите <Enter>:");
-        String text = new Scanner(System.in) .nextLine();
-        System.out.println("Длина текста: " + text.length());
-
-
-
+      System.out.println("Введите первое число:");
+      int number1 = new Scanner(System.in).nextInt();
+        System.out.println("Введите второе число:");
+        int number2 = new Scanner(System.in).nextInt();
+        int number4 = number1+number2;
+        System.out.println("сумма введенных чисел: "+number4);
+        int number5 = number1-number2;
+        System.out.println("разность введенных чисел: "+number5);
+        int number3 = number1*number2;
+        System.out.println("произведение введенных чисел: "+number3);
+        double number6 = (double)number1/number2;
+        System.out.println("произведение введенных чисел: "+number6);
     }
 }
