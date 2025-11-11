@@ -5,11 +5,16 @@ import java.util.Scanner;
 
 public class Main {
 
-    // Собственный класс исключения для слишком длинных строк
     static class TooLongLineException extends RuntimeException {
         public TooLongLineException(String message) {
             super(message);
         }
+    }
+
+    // Класс для хранения счетчиков ботов
+    static class BotCounters {
+        int googlebotCount = 0;
+        int yandexBotCount = 0;
     }
 
     public static void main(String[] args) {
@@ -30,10 +35,8 @@ public class Main {
             }
             System.out.println("Путь указан верно");
 
-            // Переменные для статистики
             int totalLines = 0;
-            int maxLineLength = 0;
-            int minLineLength = Integer.MAX_VALUE;
+            BotCounters counters = new BotCounters();
 
             try (FileReader fileReader = new FileReader(path);
                  BufferedReader reader = new BufferedReader(fileReader)) {
@@ -43,7 +46,6 @@ public class Main {
                     totalLines++;
                     int length = line.length();
 
-                    // Проверка на максимальную длину строки
                     if (length > 1024) {
                         throw new TooLongLineException(
                                 "Обнаружена строка длиннее 1024 символов! " +
@@ -52,40 +54,82 @@ public class Main {
                         );
                     }
 
-                    // Обновление самой длинной строки
-                    if (length > maxLineLength) {
-                        maxLineLength = length;
-                    }
 
-                    // Обновление самой короткой строки
-                    if (length < minLineLength) {
-                        minLineLength = length;
-                    }
+
+                    // Анализ User-Agent для поиска ботов
+                    analyzeUserAgent(line, counters);
                 }
 
-                // Обработка случая, когда файл пустой
-                if (totalLines == 0) {
-                    minLineLength = 0;
-                }
 
-                // Вывод статистики
+
+                // Вывод статистики файла
                 System.out.println("=== Статистика файла ===");
                 System.out.println("Общее количество строк: " + totalLines);
-                System.out.println("Длина самой длинной строки: " + maxLineLength);
-                System.out.println("Длина самой короткой строки: " + minLineLength);
+
+                // Вывод статистики по ботам
+                System.out.println("=== Статистика поисковых ботов ===");
+                if (totalLines > 0) {
+                    double googlebotPercentage = (double) counters.googlebotCount / totalLines * 100;
+                    double yandexBotPercentage = (double) counters.yandexBotCount / totalLines * 100;
+
+                    System.out.printf("Запросов от Googlebot: %d (%.2f%%)\n",
+                            counters.googlebotCount, googlebotPercentage);
+                    System.out.printf("Запросы от YandexBot: %d (%.2f%%)\n",
+                            counters.yandexBotCount, yandexBotPercentage);
+                } else {
+                    System.out.println("Файл пуст, статистика по ботам недоступна");
+                }
                 System.out.println("========================");
+
 
                 correctFileCount++;
                 System.out.println("Это файл номер " + correctFileCount);
 
             } catch (TooLongLineException e) {
-                // Обработка собственного исключения - завершаем программу
                 System.err.println("ОШИБКА: " + e.getMessage());
                 System.err.println("Программа завершена из-за слишком длинной строки.");
-                return; // Завершаем выполнение программы
+                return;
             } catch (Exception ex) {
                 ex.printStackTrace();
             }
         } while (true);
+    }
+
+    // Метод для анализа User-Agent строки
+    private static void analyzeUserAgent(String line, BotCounters counters) {
+        try {
+            // Ищем первую пару скобок в User-Agent
+            int startBracket = line.indexOf('(');
+            int endBracket = line.indexOf(')');
+
+            if (startBracket != -1 && endBracket != -1 && endBracket > startBracket) {
+                // Извлекаем содержимое первых скобок
+                String firstBrackets = line.substring(startBracket + 1, endBracket);
+
+                // Разделяем по точке с запятой
+                String[] parts = firstBrackets.split(";");
+
+                if (parts.length >= 2) {
+                    // Берем второй фрагмент и очищаем от пробелов
+                    String fragment = parts[1].trim();
+
+                    // Отделяем часть до слэша
+                    String programName = fragment;
+                    int slashIndex = fragment.indexOf('/');
+                    if (slashIndex != -1) {
+                        programName = fragment.substring(0, slashIndex).trim();
+                    }
+
+                    // Проверяем, является ли программа поисковым ботом
+                    if ("Googlebot".equals(programName)) {
+                        counters.googlebotCount++;
+                    } else if ("YandexBot".equals(programName)) {
+                        counters.yandexBotCount++;
+                    }
+                }
+            }
+        } catch (Exception e) {
+            // Игнорируем ошибки парсинга отдельных строк
+        }
     }
 }
