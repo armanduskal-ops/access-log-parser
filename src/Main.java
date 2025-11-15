@@ -1,135 +1,61 @@
-import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileReader;
+import java.io.FileNotFoundException;
 import java.util.Scanner;
 
 public class Main {
-
-    static class TooLongLineException extends RuntimeException {
-        public TooLongLineException(String message) {
-            super(message);
-        }
-    }
-
-    // Класс для хранения счетчиков ботов
-    static class BotCounters {
-        int googlebotCount = 0;
-        int yandexBotCount = 0;
-    }
-
     public static void main(String[] args) {
-        int correctFileCount = 0;
-        do {
-            System.out.print("Введите путь к файлу: ");
-            String path = new Scanner(System.in).nextLine();
-            File file = new File(path);
-            boolean fileExists = file.exists();
-            boolean isDirectory = file.isDirectory();
-            if (!fileExists) {
-                System.out.println("Указанный файл не существует");
-                continue;
-            }
-            if (isDirectory) {
-                System.out.println("Указанный путь ведёт к папке, а не к файлу");
-                continue;
-            }
-            System.out.println("Путь указан верно");
+        Scanner scanner = new Scanner(System.in);
 
-            int totalLines = 0;
-            BotCounters counters = new BotCounters();
+        System.out.print("Введите путь к лог-файлу: ");
+        String path = scanner.nextLine();
 
-            try (FileReader fileReader = new FileReader(path);
-                 BufferedReader reader = new BufferedReader(fileReader)) {
-
-                String line;
-                while ((line = reader.readLine()) != null) {
-                    totalLines++;
-                    int length = line.length();
-
-                    if (length > 1024) {
-                        throw new TooLongLineException(
-                                "Обнаружена строка длиннее 1024 символов! " +
-                                        "Длина строки: " + length + " символов. " +
-                                        "Строка: " + line.substring(0, 50) + "..."
-                        );
-                    }
-
-
-
-                    // Анализ User-Agent для поиска ботов
-                    analyzeUserAgent(line, counters);
-                }
-
-
-
-                // Вывод статистики файла
-                System.out.println("=== Статистика файла ===");
-                System.out.println("Общее количество строк: " + totalLines);
-
-                // Вывод статистики по ботам
-                System.out.println("=== Статистика поисковых ботов ===");
-                if (totalLines > 0) {
-                    double googlebotPercentage = (double) counters.googlebotCount / totalLines * 100;
-                    double yandexBotPercentage = (double) counters.yandexBotCount / totalLines * 100;
-
-                    System.out.printf("Запросов от Googlebot: %d (%.2f%%)\n",
-                            counters.googlebotCount, googlebotPercentage);
-                    System.out.printf("Запросы от YandexBot: %d (%.2f%%)\n",
-                            counters.yandexBotCount, yandexBotPercentage);
-                } else {
-                    System.out.println("Файл пуст, статистика по ботам недоступна");
-                }
-                System.out.println("========================");
-
-
-                correctFileCount++;
-                System.out.println("Это файл номер " + correctFileCount);
-
-            } catch (TooLongLineException e) {
-                System.err.println("ОШИБКА: " + e.getMessage());
-                System.err.println("Программа завершена из-за слишком длинной строки.");
-                return;
-            } catch (Exception ex) {
-                ex.printStackTrace();
-            }
-        } while (true);
-    }
-
-    // Метод для анализа User-Agent строки
-    private static void analyzeUserAgent(String line, BotCounters counters) {
-        try {
-            // Ищем первую пару скобок в User-Agent
-            int startBracket = line.indexOf('(');
-            int endBracket = line.indexOf(')');
-
-            if (startBracket != -1 && endBracket != -1 && endBracket > startBracket) {
-                // Извлекаем содержимое первых скобок
-                String firstBrackets = line.substring(startBracket + 1, endBracket);
-
-                // Разделяем по точке с запятой
-                String[] parts = firstBrackets.split(";");
-
-                if (parts.length >= 2) {
-                    // Берем второй фрагмент и очищаем от пробелов
-                    String fragment = parts[1].trim();
-
-                    // Отделяем часть до слэша
-                    String programName = fragment;
-                    int slashIndex = fragment.indexOf('/');
-                    if (slashIndex != -1) {
-                        programName = fragment.substring(0, slashIndex).trim();
-                    }
-
-                    // Проверяем, является ли программа поисковым ботом
-                    if ("Googlebot".equals(programName)) {
-                        counters.googlebotCount++;
-                    } else if ("YandexBot".equals(programName)) {
-                        counters.yandexBotCount++;
-                    }
-                }
-            }
-        } catch (Exception e) {
-            // Игнорируем ошибки парсинга отдельных строк
+        File file = new File(path);
+        if (!file.exists() || !file.isFile()) {
+            System.out.println("Указанный файл не существует или это не файл");
+            return;
         }
+
+        Statistics statistics = new Statistics();
+        int totalLines = 0;
+
+        try (Scanner fileScanner = new Scanner(file)) {
+            while (fileScanner.hasNextLine()) {
+                String line = fileScanner.nextLine();
+                totalLines++;
+
+                try {
+                    // Пропускаем пустые строки
+                    if (line.trim().isEmpty()) {
+                        continue;
+                    }
+
+                    LogEntry logEntry = new LogEntry(line);
+                    statistics.addEntry(logEntry);
+
+                } catch (Exception e) {
+                    System.err.println("Ошибка при разборе строки " + totalLines + ": " + e.getMessage());
+                }
+            }
+        } catch (FileNotFoundException e) {
+            System.out.println("Файл не найден: " + path);
+            return;
+        }
+
+        // Вывод статистики
+        System.out.println("\n=== Статистика анализа лог-файла ===");
+        System.out.println("Общее количество строк: " + totalLines);
+
+        if (totalLines > 0) {
+            System.out.println("\n--- Статистика трафика ---");
+            System.out.println("Общий трафик: " + statistics.getTotalTraffic() + " bytes");
+            System.out.printf("Средний трафик в час: %.2f bytes/hour\n", statistics.getTrafficRate());
+
+            if (statistics.getMinTime() != null && statistics.getMaxTime() != null) {
+                System.out.println("Период анализа: с " + statistics.getMinTime() + " по " + statistics.getMaxTime());
+            }
+        }
+
+
+        scanner.close();
     }
 }
