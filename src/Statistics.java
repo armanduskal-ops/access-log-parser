@@ -13,10 +13,10 @@ public class Statistics {
     }
 
     public void addEntry(LogEntry entry) {
-        // Добавляем трафик (используем новое название поля)
+        // Добавляем трафик
         this.totalTraffic += entry.getResponseSize();
 
-        // Обновляем minTime и maxTime (используем новое название поля)
+        // Обновляем minTime и maxTime
         LocalDateTime entryTime = entry.getTime();
         if (this.minTime == null || entryTime.isBefore(this.minTime)) {
             this.minTime = entryTime;

@@ -57,7 +57,7 @@ public class LogEntry {
         return userAgent;
     }
 
-    // Методы парсинга (остаются без изменений)
+
     private String parseIpAddress(String logLine) {
         String[] parts = logLine.split("\\s+");
         return parts.length > 0 ? parts[0] : "0.0.0.0";
